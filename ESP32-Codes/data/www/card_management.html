@@ -1,0 +1,137 @@
+<!--This HTML web only works with this ESP32 code ESP32-Firebase-RTC-WebAsync.ino, the file needs to be added in data folder in the FS on the ESP32 path: /data/www-->
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>NFC Card Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #output {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            min-height: 100px;
+            background-color: #f9f9f9;
+            white-space: pre-wrap;
+        }
+
+        .card {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #f5f5f5;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>NFC Card Management</h1>
+
+    <div>
+        <h2>Add New Card</h2>
+        <input type="text" id="userName" placeholder="Enter user name">
+        <button onclick="addCard()">Add Card</button>
+    </div>
+
+    <div>
+        <h2>View Registered Cards</h2>
+        <button onclick="viewCards()">View Cards</button>
+        <div id="cardList"></div>
+    </div>
+
+    <div>
+        <h2>Delete User</h2>
+        <input type="text" id="userToDelete" placeholder="Enter user name to delete">
+        <button onclick="deleteUser()">Delete User</button>
+    </div>
+
+    <h2>Activity Log</h2>
+    <div id="output">Waiting for activity...</div>
+
+    <script>
+        const output = document.getElementById('output');
+        const cardList = document.getElementById('cardList');
+
+        // Function to add log messages to the output div
+        function log(message) {
+            output.innerHTML += message + '\n';
+            output.scrollTop = output.scrollHeight;
+        }
+
+        // Set up EventSource for server-sent events
+        const eventSource = new EventSource('/events');
+
+        eventSource.onmessage = function (e) {
+            log(e.data);
+        };
+
+        // Function to add a new card
+        function addCard() {
+            const userName = document.getElementById('userName').value;
+            if (!userName) {
+                alert('Please enter a user name');
+                return;
+            }
+
+            fetch('/addCard?user=' + encodeURIComponent(userName))
+                .then(response => response.text())
+                .then(data => log(data))
+                .catch(err => log('Error: ' + err));
+        }
+
+        // Function to view registered cards
+        function viewCards() {
+            fetch('/viewCards')
+                .then(response => response.json())
+                .then(data => {
+                    cardList.innerHTML = '';
+                    if (data.cards && data.cards.length > 0) {
+                        data.cards.forEach(card => {
+                            const div = document.createElement('div');
+                            div.className = 'card';
+                            div.textContent = card;
+                            cardList.appendChild(div);
+                        });
+                        log('Displayed ' + data.cards.length + ' cards');
+                    } else {
+                        log('No cards registered');
+                    }
+                })
+                .catch(err => log('Error: ' + err));
+        }
+
+        // Function to delete a user
+        function deleteUser() {
+            const userToDelete = document.getElementById('userToDelete').value;
+            if (!userToDelete) {
+                alert('Please enter a user name to delete');
+                return;
+            }
+
+            fetch('/deleteUser?user=' + encodeURIComponent(userToDelete))
+                .then(response => response.text())
+                .then(data => log(data))
+                .catch(err => log('Error: ' + err));
+        }
+    </script>
+</body>
+
+</html>
