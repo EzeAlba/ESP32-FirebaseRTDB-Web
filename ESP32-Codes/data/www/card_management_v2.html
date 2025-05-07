@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>NFC Card Management</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            max-width: 1000px;
+        }
+
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button.danger {
+            background-color: #f44336;
+        }
+
+        button.danger:hover {
+            background-color: #d32f2f;
+        }
+
+        #output {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            min-height: 100px;
+            background-color: #f9f9f9;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .card {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #f5f5f5;
+        }
+
+        .section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #eee;
+            border-radius: 5px;
+        }
+
+        .login-container {
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 8px;
+            margin: 8px 0;
+            box-sizing: border-box;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-left: 10px;
+        }
+
+        .online {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .offline {
+            background-color: #f44336;
+            color: white;
+        }
+
+        .tab {
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+            border-radius: 5px 5px 0 0;
+        }
+
+        .tab button {
+            background-color: inherit;
+            float: left;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 14px 16px;
+            transition: 0.3s;
+            color: black;
+        }
+
+        .tab button:hover {
+            background-color: #ddd;
+        }
+
+        .tab button.active {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .tabcontent {
+            display: none;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-top: none;
+            border-radius: 0 0 5px 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Login Screen (initially shown) -->
+    <div id="loginScreen" class="login-container">
+        <h2>Login</h2>
+        <div id="loginError" style="color:red; margin-bottom:10px;"></div>
+        <input type="text" id="loginUser" placeholder="Username">
+        <input type="password" id="loginPass" placeholder="Password">
+        <button onclick="doLogin()">Login</button>
+    </div>
+
+    <!-- Main Application (initially hidden) -->
+    <div id="mainApp" style="display:none;">
+        <div class="tab">
+            <button class="tablinks active" onclick="openTab(event, 'Management')">Card Management</button>
+            <button class="tablinks" onclick="openTab(event, 'Logs')">Access Logs</button>
+            <button class="tablinks" onclick="openTab(event, 'System')">System</button>
+        </div>
+
+        <!-- Card Management Tab -->
+        <div id="Management" class="tabcontent" style="display:block;">
+            <h1>NFC Card Management <span id="statusBadge" class="status-badge offline">OFFLINE</span></h1>
+
+            <div class="section">
+                <h2>Add New Card</h2>
+                <input type="text" id="userName" placeholder="Enter user name">
+                <button onclick="addCard()">Add Card</button>
+            </div>
+
+            <div class="section">
+                <h2>View Registered Cards</h2>
+                <button onclick="viewCards()">View Cards</button>
+                <div id="cardList"></div>
+            </div>
+
+            <div class="section">
+                <h2>Delete User</h2>
+                <input type="text" id="userToDelete" placeholder="Enter user name to delete">
+                <button onclick="deleteUser()">Delete User</button>
+            </div>
+
+            <div class="section">
+                <h2>Activity Log</h2>
+                <div id="output">Waiting for activity...</div>
+            </div>
+        </div>
+
+        <!-- Access Logs Tab -->
+        <div id="Logs" class="tabcontent">
+            <h2>Access Logs</h2>
+            <button onclick="loadLogs()">Refresh Logs</button>
+            <div id="logContent" style="margin-top:10px;"></div>
+        </div>
+
+        <!-- System Tab -->
+        <div id="System" class="tabcontent">
+            <h2>System Controls</h2>
+            <div class="section">
+                <h3>WiFi Management</h3>
+                <button onclick="toggleWifi()" id="wifiToggleBtn">Turn Off WiFi</button>
+                <div id="wifiStatus" style="margin-top:10px;"></div>
+            </div>
+            <div class="section">
+                <h3>System Information</h3>
+                <div id="sysInfo">
+                    <p>Loading system information...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Tab functionality
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tablinks");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+
+        // Login functionality
+        function doLogin() {
+            const user = document.getElementById('loginUser').value;
+            const pass = document.getElementById('loginPass').value;
+
+            if (!user || !pass) {
+                document.getElementById('loginError').innerText = 'Please enter both username and password';
+                return;
+            }
+
+            fetch('/login?user=' + encodeURIComponent(user) + '&pass=' + encodeURIComponent(pass))
+                .then(response => {
+                    if (!response.ok) throw new Error('Login failed');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('loginScreen').style.display = 'none';
+                        document.getElementById('mainApp').style.display = 'block';
+                        updateConnectionStatus(data.hasInternet);
+                        startEventSource();
+                    } else {
+                        document.getElementById('loginError').innerText = 'Invalid credentials';
+                    }
+                })
+                .catch(err => {
+                    document.getElementById('loginError').innerText = err.message;
+                });
+        }
+
+        // Connection status
+        function updateConnectionStatus(connected) {
+            const badge = document.getElementById('statusBadge');
+            badge.className = connected ? 'status-badge online' : 'status-badge offline';
+            badge.innerText = connected ? 'ONLINE' : 'OFFLINE';
+        }
+
+        // Event Source for real-time updates
+        let eventSource;
+        function startEventSource() {
+            eventSource = new EventSource('/events');
+
+            eventSource.onmessage = function (e) {
+                log(e.data);
+
+                // Check if message contains connection status update
+                if (e.data.includes("Internet connection:")) {
+                    const isOnline = e.data.includes("restored");
+                    updateConnectionStatus(isOnline);
+                }
+            };
+
+            eventSource.onerror = function () {
+                log("Event source error - attempting to reconnect...");
+                setTimeout(startEventSource, 5000);
+            };
+        }
+
+        // Log function for activity log
+        function log(message) {
+            const output = document.getElementById('output');
+            output.innerHTML += message + '\n';
+            output.scrollTop = output.scrollHeight;
+        }
+
+        // Load access logs from file
+        function loadLogs() {
+            fetch('/getLogs')
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('logContent').innerHTML =
+                        '<pre>' + data.replace(/\n/g, '<br>') + '</pre>';
+                })
+                .catch(err => {
+                    document.getElementById('logContent').innerHTML =
+                        'Error loading logs: ' + err.message;
+                });
+        }
+
+        // WiFi toggle function
+        function toggleWifi() {
+            const btn = document.getElementById('wifiToggleBtn');
+            const isTurningOff = btn.innerText.includes('Off');
+
+            fetch('/toggleWifi?state=' + (isTurningOff ? 'off' : 'on'))
+                .then(response => response.text())
+                .then(data => {
+                    document.getElementById('wifiStatus').innerText = data;
+                    btn.innerText = isTurningOff ? 'Turn On WiFi' : 'Turn Off WiFi';
+                    updateConnectionStatus(!isTurningOff);
+                })
+                .catch(err => {
+                    document.getElementById('wifiStatus').innerText = 'Error: ' + err.message;
+                });
+        }
+
+        // System information
+        function loadSystemInfo() {
+            fetch('/systemInfo')
+                .then(response => response.json())
+                .then(data => {
+                    let html = '<p><strong>Device:</strong> ESP32</p>';
+                    html += `<p><strong>IP Address:</strong> ${data.ip || 'Unknown'}</p>`;
+                    html += `<p><strong>WiFi SSID:</strong> ${data.ssid || 'Not connected'}</p>`;
+                    html += `<p><strong>Free Heap:</strong> ${data.freeHeap || 0} bytes</p>`;
+                    html += `<p><strong>Uptime:</strong> ${data.uptime || 0} seconds</p>`;
+                    document.getElementById('sysInfo').innerHTML = html;
+                });
+        }
+
+        // Card management functions
+        function addCard() {
+            const userName = document.getElementById('userName').value;
+            if (!userName) {
+                alert('Please enter a user name');
+                return;
+            }
+
+            fetch('/addCard?user=' + encodeURIComponent(userName))
+                .then(response => response.text())
+                .then(data => log(data))
+                .catch(err => log('Error: ' + err));
+        }
+
+        function viewCards() {
+            fetch('/viewCards')
+                .then(response => response.json())
+                .then(data => {
+                    const cardList = document.getElementById('cardList');
+                    cardList.innerHTML = '';
+                    if (data.cards && data.cards.length > 0) {
+                        data.cards.forEach(card => {
+                            const div = document.createElement('div');
+                            div.className = 'card';
+                            div.textContent = card;
+                            cardList.appendChild(div);
+                        });
+                        log('Displayed ' + data.cards.length + ' cards');
+                    } else {
+                        log('No cards registered');
+                    }
+                })
+                .catch(err => log('Error: ' + err));
+        }
+
+        function deleteUser() {
+            const userToDelete = document.getElementById('userToDelete').value;
+            if (!userToDelete) {
+                alert('Please enter a user name to delete');
+                return;
+            }
+
+            fetch('/deleteUser?user=' + encodeURIComponent(userToDelete))
+                .then(response => response.text())
+                .then(data => log(data))
+                .catch(err => log('Error: ' + err));
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function () {
+            // Check if we're already logged in (for page refresh)
+            fetch('/checkAuth')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.authenticated) {
+                        document.getElementById('loginScreen').style.display = 'none';
+                        document.getElementById('mainApp').style.display = 'block';
+                        updateConnectionStatus(data.hasInternet);
+                        startEventSource();
+                        loadSystemInfo();
+                    }
+                });
+        });
+    </script>
+</body>
+
+</html>

@@ -1,36 +1,192 @@
-<!-- Hosting deploy link https://esp32-basico-lectura-c3a63.web.app/ --> 
-
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NFC Access Control</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NFC Access Control System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.0/firebase-auth-compat.js"></script>
+    <style>
+        .card-section {
+            margin-bottom: 2rem;
+            padding: 1.5rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+
+        .status-badge {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        #liveLog {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .tab-content {
+            padding: 1rem 0;
+        }
+    </style>
 </head>
+
 <body>
-  <div class="container mt-5">
-    <h1 class="mb-4">NFC Access Logs</h1>
-    <div class="card">
-      <div class="card-body">
-        <table class="table table-striped" id="accessTable">
-          <thead>
-            <tr>
-              <th>Time</th>
-              <th>Card UID</th>
-              <th>User</th>
-              <th>Access</th>
-            </tr>
-          </thead>
-          <tbody id="accessTableBody">
-            <!-- Data will be inserted here by JavaScript -->
-          </tbody>
-        </table>
-      </div>
+    <div class="container py-4">
+        <!-- Login Modal -->
+        <div class="modal fade" id="loginModal" tabindex="-1" aria-hidden="false">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Login</h5>
+                    </div>
+                    <div class="modal-body">
+                        <div id="loginAlert" class="alert alert-danger d-none"></div>
+                        <div class="mb-3">
+                            <label for="loginEmail" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="loginEmail">
+                        </div>
+                        <div class="mb-3">
+                            <label for="loginPassword" class="form-label">Password</label>
+                            <input type="password" class="form-control" id="loginPassword">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button id="loginBtn" class="btn btn-primary">Login</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Interface -->
+        <div id="mainApp" class="d-none">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>NFC Access Control</h1>
+                <div>
+                    <span id="connectionStatus" class="badge bg-secondary status-badge">Loading...</span>
+                    <button id="logoutBtn" class="btn btn-sm btn-outline-danger ms-2">Logout</button>
+                </div>
+            </div>
+
+            <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="management-tab" data-bs-toggle="tab"
+                        data-bs-target="#management" type="button">Management</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="logs-tab" data-bs-toggle="tab" data-bs-target="#logs"
+                        type="button">Access Logs</button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="system-tab" data-bs-toggle="tab" data-bs-target="#system"
+                        type="button">System</button>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- Management Tab -->
+                <div class="tab-pane fade show active" id="management" role="tabpanel">
+                    <div class="card-section mt-3">
+                        <h3>Register New Card</h3>
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <input type="text" id="newUserName" class="form-control" placeholder="User name">
+                            </div>
+                            <div class="col-md-4">
+                                <button id="registerCardBtn" class="btn btn-primary w-100">Register Card</button>
+                            </div>
+                        </div>
+                        <div class="mt-3" id="scanStatus"></div>
+                    </div>
+
+                    <div class="card-section">
+                        <h3>Registered Cards</h3>
+                        <button id="refreshCardsBtn" class="btn btn-secondary mb-3">Refresh List</button>
+                        <div class="table-responsive">
+                            <table class="table" id="cardsTable">
+                                <thead>
+                                    <tr>
+                                        <th>Card UID</th>
+                                        <th>User</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cardsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Access Logs Tab -->
+                <div class="tab-pane fade" id="logs" role="tabpanel">
+                    <div class="card-section mt-3">
+                        <h3>Live Access Log</h3>
+                        <div class="card">
+                            <div class="card-body p-0">
+                                <div id="liveLog" class="p-3"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-section">
+                        <h3>Access History</h3>
+                        <div class="table-responsive">
+                            <table class="table" id="accessTable">
+                                <thead>
+                                    <tr>
+                                        <th>Time</th>
+                                        <th>Card UID</th>
+                                        <th>User</th>
+                                        <th>Access</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="accessTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Tab -->
+                <div class="tab-pane fade" id="system" role="tabpanel">
+                    <div class="card-section mt-3">
+                        <h3>System Status</h3>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Device Information</h5>
+                                        <ul class="list-group list-group-flush">
+                                            <li class="list-group-item"><strong>Status:</strong> <span
+                                                    id="deviceStatus">Loading...</span></li>
+                                            <li class="list-group-item"><strong>Last Sync:</strong> <span
+                                                    id="lastSync">-</span></li>
+                                            <li class="list-group-item"><strong>Total Cards:</strong> <span
+                                                    id="totalCards">0</span></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card">
+                                    <div class="card-body">
+                                        <h5 class="card-title">Actions</h5>
+                                        <button id="syncNowBtn" class="btn btn-primary w-100 mb-2">Sync Now</button>
+                                        <button id="rebootBtn" class="btn btn-warning w-100 mb-2">Reboot Device</button>
+                                        <button id="factoryResetBtn" class="btn btn-danger w-100">Factory Reset</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </div>
-  <script src="index.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
 </body>
+
 </html>
