@@ -24,6 +24,7 @@ const connectionStatus = document.getElementById('connectionStatus');
 // Database References
 const commandsRef = database.ref('buildings/Casa/comand');
 const cardsRef = database.ref('buildings/Casa/cards');
+const logsRef = database.ref('buildings/Casa/logs');
 const serialRef = database.ref('buildings/Casa/Serial');
 const memoryRef = database.ref('buildings/Casa/Memory');
 const systemRef = database.ref('buildings/Casa/system');
@@ -118,7 +119,7 @@ function setupDatabaseListeners() {
     });
 
     // Access history listener
-    cardsRef.on('value', (snapshot) => {
+    logsRef.on('value', (snapshot) => {
         const tbody = document.getElementById('accessTableBody');
         tbody.innerHTML = '';
 
