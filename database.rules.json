@@ -1,6 +1,53 @@
 {
   "rules": {
-    ".read": "now < 1745550000000",  // 2025-4-25
-    ".write": "now < 1745550000000",  // 2025-4-25
+    "board1": {
+      "outputs": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "buildings": {
+      "Casa": {
+        "Memory": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        },
+        "Serial": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        },
+        "cards": {
+          ".read": "auth != null",
+          ".write": "auth != null" 
+        },
+        "comand": {
+          ".read": "auth != null",
+          ".write": "auth != null ",
+          "01": {
+            ".write": "auth != null"
+          }
+        },
+        "logs": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        },
+        "system": {
+          ".read": "auth != null",
+          ".write": "auth != null"
+        },
+        "users": {
+          "$uid": {
+            ".read": "auth != null",
+            ".write": "auth != null"
+          }
+        }
+      }
+    },
+    "users": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    }
   }
 }
